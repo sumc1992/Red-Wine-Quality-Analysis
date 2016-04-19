@@ -22,53 +22,55 @@ mydata <- read.csv("~/Dropbox/Udacity/data_analyst/project_4/wineQualityReds.csv
 
 # Univariate Plots Section
 ```{r echo=FALSE, Univariate_Plots}
-names(mydata)# Print name of each variable in the dataset
+
+names(mydata) # Print name of each variable in the dataset
 mydata <- mydata[,-1]
 # Variable class conversion
-mydata$quality <- as.factor(mydata$quality)
+mydata$quality <- as.factor(mydata$quality) # Change quality variable to factor
+# Set these two variables as integer
 mydata$free.sulfur.dioxide <- as.integer(mydata$free.sulfur.dioxide)
 mydata$total.sulfur.dioxide <- as.integer(mydata$total.sulfur.dioxide)
 str(mydata)
 summary(mydata)
 summary(mydata$quality)
 unique(mydata$quality)
-by(mydata$fixed.acidity,mydata$quality,summary)
-
+#by(mydata$sulphates, mydata$new.quality, summary)
 # Because there are only so few wines in quality 3,4 and 7,8
 # I will group 3 and 4 to 'low', 7 and 8 to high, 5 as medium-low and 6 as
 # medium high.
-mydata$new.quality <- mydata$quality
-levels(mydata$new.quality) = c("low", "low", "medium-low", "medium-high", "high", "high")
+mydata$new.quality <- mydata$quality # Create a new quality variable
+levels(mydata$new.quality) = c("low", "low", "medium-low", "medium-high", "high", "high") # Set levels of this new quality variable
 
 ```
 
 All the wines here are acidic with `pH` value ranging from 2.74 to 4.01. The `alcohol` content of these wines has a median of 10.2%, minimum of 8.40% and a maximum of 14.90%
 
+# I would next like to examine the distribution of each variable by plotting histograms.
+
 ```{r echo=FALSE, error = FALSE, warning = FALSE, message = FALSE}
-p1 <- ggplot(aes(x = fixed.acidity), data = mydata) + geom_histogram()
-p2 <- ggplot(aes(x = volatile.acidity), data = mydata) + geom_histogram()
-p3 <- ggplot(aes(x = citric.acid), data = mydata) + geom_histogram()
-p4 <- ggplot(aes(x = residual.sugar), data = mydata) + geom_histogram()
-p5 <- ggplot(aes(x = chlorides), data = mydata) + geom_histogram()
-p6 <- ggplot(aes(x = free.sulfur.dioxide), data = mydata) + geom_histogram()
-p7 <- ggplot(aes(x = total.sulfur.dioxide), data = mydata) + geom_histogram()
-p8 <- ggplot(aes(x = density), data = mydata) + geom_histogram()
-p9 <- ggplot(aes(x = pH), data = mydata) + geom_histogram()
-p10 <- ggplot(aes(x = sulphates), data = mydata) + geom_histogram()
-p11 <- ggplot(aes(x = alcohol), data = mydata) + geom_histogram()
-p12 <- ggplot(aes(x = new.quality), data = mydata) + geom_histogram()
-
-
-grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12,
-             ncol = 4)
-
-remove(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12)
+ggplot(aes(x = fixed.acidity), data = mydata) + geom_histogram()
+ggplot(aes(x = volatile.acidity), data = mydata) + geom_histogram()
+ggplot(aes(x = citric.acid), data = mydata) + geom_histogram()
+ggplot(aes(x = residual.sugar), data = mydata) + geom_histogram()
+ggplot(aes(x = chlorides), data = mydata) + geom_histogram()
+ggplot(aes(x = free.sulfur.dioxide), data = mydata) + geom_histogram()
+ggplot(aes(x = total.sulfur.dioxide), data = mydata) + geom_histogram()
+ggplot(aes(x = density), data = mydata) + geom_histogram()
+ggplot(aes(x = pH), data = mydata) + geom_histogram()
+ggplot(aes(x = sulphates), data = mydata) + geom_histogram()
+ggplot(aes(x = alcohol), data = mydata) + geom_histogram()
+ggplot(aes(x = new.quality), data = mydata) + geom_histogram()
 
 ```
 
 I noticed the histograms for residual sugar, chlorides and sulphates have very
-long tails. I want to take a closer look at the left side of the plots. 
+long tails and all others generally have normally distributed values.
+I want to take a closer look at the left side of the plots. 
 I also want to transform residual.sugar using log10.
+
+New.quality plot shows that most wines have rating of 'medium-low' or medium-high' ratings.
+
+# Next I would like to modified specsifications for histograms of residual sugar, chlorides and sulphates. I will also apply log10 transformation to residual sugar and sulphates.
 
 ```{r echo = FALSE}
 
@@ -96,7 +98,7 @@ qplot(x = chlorides, data = mydata, binwidth = .002,
 
 qplot(x = sulphates, data = mydata, binwidth = .01,
       color = I("black"), fill = I("red")) +
-        scale_x_continuous(limits = c(.4, 1), breaks = seq(.4, 1, .1), trans = 'log10')
+        scale_x_continuous(limits = c(.4, 1), breaks = seq(.4, 1, .1), trans = 'log10') # Transform the variable with Log10
 
 ```
 
@@ -182,10 +184,15 @@ with(mydata, cor.test(volatile.acidity, citric.acid, method = "pearson"))
 with(mydata, cor.test(volatile.acidity, sulphates, method = "pearson"))
 with(mydata, cor.test(citric.acid, sulphates, method = "pearson"))
 
+# Perform randomforest to the data set
+# Set new quality as Y
 rf <- randomForest(y = mydata$new.quality, x = mydata[,1:11], ntree = 100)
+
 varImpPlot(rf)
 ```
-fixed,acidity, 
+
+Above I used boxplot to represent the relationship of each variable with our target variable 'Wine Quality'. I also use Pearson coorelation test to quantatively identify variables with high importance which will be discussed in details in next section.
+ 
 # Bivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
@@ -203,6 +210,8 @@ I found that fix.acidity is strongly coorelated with sulphates and volatile.acid
 Because quality is a vector, I used randomforest and its importance graph to find the variable with the strongest relationship and I found `alcohol` top the list.
 
 # Multivariate Plots Section
+
+Here I will plot Multivariate plots of new.quality and two other important variables.
 
 ```{r echo=FALSE, Multivariate_Plots}
 ggplot(data = mydata,
@@ -226,33 +235,38 @@ Wine of high quality typically have low total sulfur dioxide and low volatile ac
 
 ### Plot One
 ```{r echo=FALSE, Plot_One}
-ggplot(mydata, aes(x = new.quality, y = alcohol, fill = new.quality)) +
-        geom_boxplot()
+ggplot(mydata, aes(x = new.quality, y = alcohol)) +
+        geom_boxplot() + 
+        ylab("Alcohol Content (% by volume)") +
+        xlab("Quality of Wine") +
+        ggtitle("Boxplot - Wine Quality vs. Alcohol Content")
 ```
 
 ### Description One
 
-High quality wines clearly appear to have higher alcohol content with higher medium and quantiles.
+The pink spots represent the wines with high quality. Those pink spots clustered in the upper right corner. High quality wines clearly appear to have higher alcohol content on average with higher medium and quantiles. From our previous statistical analysis, we know the average alcohol content for high quality wine is 11.6% while medium-low and medium-high quality wines have 9.7% and 10.5% respectively.
 
 ### Plot Two
 ```{r echo=FALSE, Plot_Two}
-varImpPlot(rf)
+ggplot(data = subset(mydata),
+       aes(x = alcohol, y = sulphates, color = new.quality)) +
+  geom_point() + geom_jitter() +
+        xlab("Alcohol Content Percentage (% by volume)") +
+        ylab("Sulphates Levels (potassium sulphate - g / dm3)")
 ```
 
 ### Description Two
 
-With the results from random forest model, we can identify the most important variable being alcohol, followed by sulphates, total.sulfur.dioxide and volatile.acidity.
+The two most important variables alcohol and sulphates are ploted on the two variable scatter plot and I have omitted medium quality wines. As we can see in the plot, high quality wines generaly have high alcohol content and low sulphates while low and medium quality wines have lower alcohol content and sometimes relatively high sulphates amount. And high quality wines have an average sulphates content of .74 g / dm3 while medium-low and medium-high quality wines have .58 and .64 g / dm3 respectively.
 
 ### Plot Three
 ```{r echo=FALSE, Plot_Three}
-ggplot(data = subset(mydata),
-       aes(x = alcohol, y = sulphates, color = new.quality)) +
-  geom_point() + geom_jitter()
+varImpPlot(rf)
 ```
 
 ### Description Three
 
-The two most important variables alcohol and sulphates are ploted on the two variable scatter plot and I have omitted medium quality wines. As we can see in the plot, high quality wines generaly have high alcohol content and low sulphates while low and medium quality wines have lower alcohol content and sometimes relatively high sulphates amount.
+With the results from random forest model, we can identify the most important variable being alcohol, followed by sulphates, total.sulfur.dioxide and volatile.acidity.
 
 ------
 
