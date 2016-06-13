@@ -1,0 +1,277 @@
+# Data Analyst project 4
+Explore and summarize data
+Red Wine Quality Analysis
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using
+# in your analysis in this code chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk.
+# This prevents the code from displaying in the knitted HTML output.
+# You should set echo=FALSE for all code chunks in your file.
+
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(randomForest)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+mydata <- read.csv("~/Dropbox/Udacity/data_analyst/project_4/wineQualityReds.csv",header = T)
+```
+
+# Univariate Plots Section
+```{r echo=FALSE, Univariate_Plots}
+
+names(mydata) # Print name of each variable in the dataset
+mydata <- mydata[,-1]
+# Variable class conversion
+mydata$quality <- as.factor(mydata$quality) # Change quality variable to factor
+# Set these two variables as integer
+mydata$free.sulfur.dioxide <- as.integer(mydata$free.sulfur.dioxide)
+mydata$total.sulfur.dioxide <- as.integer(mydata$total.sulfur.dioxide)
+str(mydata)
+summary(mydata)
+summary(mydata$quality)
+unique(mydata$quality)
+#by(mydata$sulphates, mydata$new.quality, summary)
+# Because there are only so few wines in quality 3,4 and 7,8
+# I will group 3 and 4 to 'low', 7 and 8 to high, 5 as medium-low and 6 as
+# medium high.
+mydata$new.quality <- mydata$quality # Create a new quality variable
+levels(mydata$new.quality) = c("low", "low", "medium-low", "medium-high", "high", "high") # Set levels of this new quality variable
+
+```
+
+All the wines here are acidic with `pH` value ranging from 2.74 to 4.01. The `alcohol` content of these wines has a median of 10.2%, minimum of 8.40% and a maximum of 14.90%
+
+# I would next like to examine the distribution of each variable by plotting histograms.
+
+```{r echo=FALSE, error = FALSE, warning = FALSE, message = FALSE}
+ggplot(aes(x = fixed.acidity), data = mydata) + geom_histogram()
+ggplot(aes(x = volatile.acidity), data = mydata) + geom_histogram()
+ggplot(aes(x = citric.acid), data = mydata) + geom_histogram()
+ggplot(aes(x = residual.sugar), data = mydata) + geom_histogram()
+ggplot(aes(x = chlorides), data = mydata) + geom_histogram()
+ggplot(aes(x = free.sulfur.dioxide), data = mydata) + geom_histogram()
+ggplot(aes(x = total.sulfur.dioxide), data = mydata) + geom_histogram()
+ggplot(aes(x = density), data = mydata) + geom_histogram()
+ggplot(aes(x = pH), data = mydata) + geom_histogram()
+ggplot(aes(x = sulphates), data = mydata) + geom_histogram()
+ggplot(aes(x = alcohol), data = mydata) + geom_histogram()
+ggplot(aes(x = new.quality), data = mydata) + geom_histogram()
+
+```
+
+I noticed the histograms for residual sugar, chlorides and sulphates have very
+long tails and all others generally have normally distributed values.
+I want to take a closer look at the left side of the plots. 
+I also want to transform residual.sugar using log10.
+
+New.quality plot shows that most wines have rating of 'medium-low' or medium-high' ratings.
+
+# Next I would like to modified specsifications for histograms of residual sugar, chlorides and sulphates. I will also apply log10 transformation to residual sugar and sulphates.
+
+```{r echo = FALSE}
+
+# modified qplot for residual sugar
+
+sugarp1 = qplot(x = residual.sugar, data = mydata, binwidth = .05, 
+      color = I("black"), fill = I("green"),
+      xlab = "Residual Sugar Amount", ylab = "Number of Wines") +
+        scale_x_continuous(limits = c(1,5), breaks = seq(1,5,.5))
+
+sugarp2 = qplot(x = residual.sugar, data = mydata, binwidth = .05, 
+      color = I("black"), fill = I("green"),
+      xlab = "Residual Sugar Amount", ylab = "Number of Wines/log10") +
+        scale_x_continuous(limits = c(1,5), breaks = seq(1,5,.5),trans = 'log10')
+
+grid.arrange(sugarp1, sugarp2, ncol = 1)
+
+# modified qplot for chlorides
+
+qplot(x = chlorides, data = mydata, binwidth = .002, 
+      color = I("black"), fill = I("blue")) + 
+        scale_x_continuous(limits = c(0,.2), breaks = seq(0, .2, .01))
+
+# modified qplot for sulphates
+
+qplot(x = sulphates, data = mydata, binwidth = .01,
+      color = I("black"), fill = I("red")) +
+        scale_x_continuous(limits = c(.4, 1), breaks = seq(.4, 1, .1), trans = 'log10') # Transform the variable with Log10
+
+```
+
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+
+This dataset consists of 12 variables and 1,599 observations. All of them are numeric variables or interger except quality.
+
+Numeric or Interger:
+`fixed.acidity`,`volatile.acidity`, `citric.acid`, `residual.surgar`, `chlorides`
+`free.sulfur.dioxide`, `total.sulfur.dioxide`, `density`, `pH`, `sulphates`, `alcohol`
+
+Important factor:
+Worst - - - - - - - - - - - - - - > Best
+`quality`: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+
+Other Observation:
+All wines are acidic.
+Mediam alcohol content is 10.2%
+Amount of sulfur dioxide varies greatly.
+Density of wines has very little variation.
+
+### What is/are the main feature(s) of interest in your dataset?
+
+The main feature of interst in this dataset is wine `quality` and `alcohol`.
+I want to build a model that predicts wine quality using alcohol content and 
+some other variables.
+
+### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+
+`pH` level and `volatile.acidity` might help in predicting wine quality.
+
+### Did you create any new variables from existing variables in the dataset?
+
+Yes, I created combined.sulfur.dioxide varible that is the sume of 
+free.sulfur.dioxide and total.sulfur.dioxide. Although I have doubt whether 
+creating this new variable is nessessary or not.
+
+### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+
+Yes.
+1. I changed 'quality' to factor and covert 3 and 4 to low, 5 to medium-low,
+6 to medium-high, 7 to high and 8 to high.
+I did it because 3, 4, 7 and 8 have very few observations.
+2. I applied log10 to tramsoform residual sugar's long-tail distribution.
+
+
+# Bivariate Plots Section
+```{r echo=FALSE, Bivariate_Plots}
+#quality_groups <- group_by(mydata, new.quality)
+#values_by_quality <- summarise(quality_groups,
+#                               fixed.acidity.mean = mean(fixed.acidity),
+#                               n = n())
+
+ggplot(mydata, aes(x = new.quality, y = fixed.acidity, fill = new.quality)) +
+        geom_boxplot()
+ggplot(mydata, aes(x = new.quality, y = volatile.acidity, fill = new.quality)) + geom_boxplot()
+ggplot(mydata, aes(x = new.quality, y = citric.acid, fill = new.quality)) +
+        geom_boxplot()
+ggplot(mydata, aes(x = new.quality, y = residual.sugar, fill = new.quality)) +
+        geom_boxplot()
+ggplot(mydata, aes(x = new.quality, y = chlorides, fill = new.quality)) +
+        geom_boxplot()
+ggplot(mydata, aes(x = new.quality, y = free.sulfur.dioxide, fill = new.quality)) +
+        geom_boxplot()
+ggplot(mydata, aes(x = new.quality, y = total.sulfur.dioxide, fill = new.quality)) +
+        geom_boxplot()
+ggplot(mydata, aes(x = new.quality, y = density, fill = new.quality)) +
+        geom_boxplot()
+ggplot(mydata, aes(x = new.quality, y = pH, fill = new.quality)) +
+        geom_boxplot()
+ggplot(mydata, aes(x = new.quality, y = sulphates, fill = new.quality)) +
+        geom_boxplot()
+ggplot(mydata, aes(x = new.quality, y = alcohol, fill = new.quality)) +
+        geom_boxplot()
+
+with(mydata, cor.test(fixed.acidity, volatile.acidity, method = "pearson"))
+with(mydata, cor.test(fixed.acidity, citric.acid, method = "pearson"))
+with(mydata, cor.test(fixed.acidity, sulphates, method = "pearson"))
+with(mydata, cor.test(volatile.acidity, citric.acid, method = "pearson"))
+with(mydata, cor.test(volatile.acidity, sulphates, method = "pearson"))
+with(mydata, cor.test(citric.acid, sulphates, method = "pearson"))
+
+# Perform randomforest to the data set
+# Set new quality as Y
+rf <- randomForest(y = mydata$new.quality, x = mydata[,1:11], ntree = 100)
+
+varImpPlot(rf)
+```
+
+Above I used boxplot to represent the relationship of each variable with our target variable 'Wine Quality'. I also use Pearson coorelation test to quantatively identify variables with high importance which will be discussed in details in next section.
+ 
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+
+It seemed to me that `fix.acidity`, `volatile.acidity`, `citric.acid` and `sulphate` have some degrees of coorelation with wine quality (`new.quality`).
+
+I then wanted to see if those features have coorelation between each other by using cor.test function.
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+
+I found that fix.acidity is strongly coorelated with sulphates and volatile.acidity is strongly coorealted with citric.acid.
+
+### What was the strongest relationship you found?
+
+Because quality is a vector, I used randomforest and its importance graph to find the variable with the strongest relationship and I found `alcohol` top the list.
+
+# Multivariate Plots Section
+
+Here I will plot Multivariate plots of new.quality and two other important variables.
+
+```{r echo=FALSE, Multivariate_Plots}
+ggplot(data = mydata,
+       aes(x = alcohol, y = sulphates, color = new.quality)) +
+  geom_point()
+ggplot(data = mydata,
+       aes(x = total.sulfur.dioxide, y = volatile.acidity, color = new.quality)) +
+  geom_point()
+
+```
+
+# Multivariate Analysis
+
+I created a random forest model to predict the quality of wines. I choose random forest because it works with vector as target variable and it is easy to implement. One limitation is that it often produced misleading result if there are highly coorealted variables.
+
+Wine of high quality typically have low total sulfur dioxide and low volatile acidity and have very high alcohol content with relatively low sulphates.
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+ggplot(mydata, aes(x = new.quality, y = alcohol)) +
+        geom_boxplot() + 
+        ylab("Alcohol Content (% by volume)") +
+        xlab("Quality of Wine") +
+        ggtitle("Boxplot - Wine Quality vs. Alcohol Content")
+```
+
+### Description One
+
+The pink spots represent the wines with high quality. Those pink spots clustered in the upper right corner. High quality wines clearly appear to have higher alcohol content on average with higher medium and quantiles. From our previous statistical analysis, we know the average alcohol content for high quality wine is 11.6% while medium-low and medium-high quality wines have 9.7% and 10.5% respectively.
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+ggplot(data = subset(mydata),
+       aes(x = alcohol, y = sulphates, color = new.quality)) +
+  geom_point() + geom_jitter() +
+        xlab("Alcohol Content Percentage (% by volume)") +
+        ylab("Sulphates Levels (potassium sulphate - g / dm3)")
+```
+
+### Description Two
+
+The two most important variables alcohol and sulphates are ploted on the two variable scatter plot and I have omitted medium quality wines. As we can see in the plot, high quality wines generaly have high alcohol content and low sulphates while low and medium quality wines have lower alcohol content and sometimes relatively high sulphates amount. And high quality wines have an average sulphates content of .74 g / dm3 while medium-low and medium-high quality wines have .58 and .64 g / dm3 respectively.
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+varImpPlot(rf)
+```
+
+### Description Three
+
+With the results from random forest model, we can identify the most important variable being alcohol, followed by sulphates, total.sulfur.dioxide and volatile.acidity.
+
+------
+
+# Reflection
+
+Here in this excersise, I have examined this red wine quality data set through various plotting and different statistical techniques. While I have identified two most important features as alcohol and sulphates, we have to also recognize that these ratings are measured by wine experts and it could be that those people happen to have a perference to wines with high alcohol content. Just like people say, 'correlation does not imply causation'.
