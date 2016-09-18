@@ -1,5 +1,3 @@
-# Data Analyst project 4
-Explore and summarize data
 Red Wine Quality Analysis
 ========================================================
 
